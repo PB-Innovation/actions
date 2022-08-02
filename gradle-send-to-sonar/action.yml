@@ -1,0 +1,55 @@
+name: gradle-send-to-sonar
+author: 'Pərvin Yaqubzadə'
+description: 'GitHub action for sending test test coverage report to SonarCloud'
+
+inputs:
+  java-distribution:
+    description: 'Java distribution to use'
+    required: false
+    default: 'temurin'
+  java-version:
+    description: 'Java version to use'
+    required: false
+    default: '17'
+  gradle-version:
+    description: 'Gradle version'
+    required: false
+    default: 'wrapper'
+  gradle-debug-cache:
+    description: 'Debug output for gradle cache'
+    required: false
+    default: 'true'
+  github-token:
+    description: 'GitHub token for authorization'
+    required: true
+  sonar-login:
+    description: 'SonarCloud token for authorization'
+    required: true
+  sonar-organization:
+    description: 'Organization key in SonarCloud'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: ${{ inputs.java-distribution }}
+        java-version: ${{ inputs.java-version }}
+
+    - name: Send to SonarCloud
+      uses: gradle/gradle-build-action@v2.2.2
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: ${{ inputs.gradle-debug-cache }}
+      with:
+        gradle-version: ${{ inputs.gradle-version }}
+        arguments: |
+          sonarqube
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.sourceEncoding=UTF-8
+          -Dsonar.organization=${{ inputs.sonar-organization }}
+          -Dsonar.login=${{ inputs.sonar-login }}
+          -Dsonar.projectName=${{ github.event.repository.name }}
+          -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}

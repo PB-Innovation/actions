@@ -1,6 +1,7 @@
-name: deployment-to-development-environment
-author: "Rufet Mezemov"
-description: "Deploy to development environment"
+name: deploy-service
+author: "Pərvin Yaqubzadə"
+description: "Deploy service to Kubernetes Cluster"
+
 inputs:
   java-distribution:
     description: "Java distribution to use"
@@ -10,30 +11,29 @@ inputs:
     description: "Java version to use"
     required: false
     default: "17"
-  cache:
-    description: "Build tool caching"
-    required: false
-    default: "true"
   gradle-version:
-    description: "Gradle version"
+    description: 'Gradle version'
     required: false
-    default: "wrapper"
-  azure-version:
-    description: "Azure version to use"
+    default: 'wrapper'
+  gradle-debug-cache:
+    description: 'Debug output for gradle cache'
     required: false
-    default: "v1.23.6"
-  repository:
-    description: "Infra helm chat repository"
-    required: false
-    default: "infra-helm-chart"
-  ref:
-    description: "Helm chart repository"
-    required: false
-    default: "master"
-  path:
-    description: "Helm chart path"
-    required: false
-    default: "infra-helm-chart"
+    default: 'true'
+  env-context:
+    description: 'Environment variables used in jobs'
+    required: true
+  k8s-context:
+    description: 'Encoded Kubernetes Cluster context'
+    required: true
+  github-token:
+    description: 'GitHub private access token for authorization'
+    required: true
+  aws-access-key-id:
+    description: 'AWS account access key ID'
+    required: true
+  aws-secret-access-key:
+    description: 'AWS account secret access key'
+    required: true
 
 runs:
   using: composite
@@ -45,27 +45,29 @@ runs:
         java-version: ${{ inputs.java-version }}
 
     - name: Build the application
-      uses: gradle/gradle-build-action@v2
+      uses: gradle/gradle-build-action@v2.2.2
       env:
-        GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: true
+        GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: ${{ inputs.gradle-debug-cache }}
       with:
         gradle-version: ${{ inputs.gradle-version }}
         arguments: bootJar
         cache-read-only: false
 
     - name: Change backend config and environment variables
+      shell: sh
       run: |
-        echo "${{ secrets.CONTEXT_DEV }}" >> $GITHUB_ENV
-        echo "${{ secrets.CONTEXT_DEV }}" | sed 's/\(.*\)=/::add-mask::/' | sed 's/\"//g'
+        echo "${{ inputs.env-context }}" >> $GITHUB_ENV
+        echo "${{ inputs.env-context }}" | sed 's/\(.*\)=/::add-mask::/' | sed 's/\"//g'
 
     - uses: azure/setup-kubectl@v2.0
       with:
-        version: ${{ inputs.azure-version }}
+        version: 'v1.23.6'
       id: install
 
     - name: Use dev kubectl context
       env:
-        KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA_DEV }}
+        KUBE_CONFIG_DATA: ${{ inputs.k8s-context }}
+      shell: sh
       run: |
         mkdir ~/.kube
         echo $KUBE_CONFIG_DATA | base64 --decode > ~/.kube/config
@@ -77,20 +79,21 @@ runs:
     - name: Get Helm chart from Git repository
       uses: actions/checkout@v3
       with:
-        ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        repository: ${{ inputs.repository }}
-        ref: ${{ inputs.ref }}
-        path: ${{ inputs.path }}
+        token: ${{ inputs.github-token }}
+        repository: PB-Innovation/infra-helm-chart
+        ref: master
+        path: infra-helm-chart
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Create ECR Repository if does not exists
-      run: aws ecr create-repository --repository-name ${{ env.APP_NAME }} || true
+      shell: sh
+      run: aws ecr create-repository --repository-name ${{ github.event.repository.name }} || true
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -100,8 +103,9 @@ runs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ env.APP_NAME }}
+        ECR_REPOSITORY: ${{ github.event.repository.name }}
         IMAGE_TAG: ${{ github.sha }}
+      shell: sh
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -110,8 +114,9 @@ runs:
     - name: Helm template
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ env.APP_NAME }}
+        ECR_REPOSITORY: ${{ github.event.repository.name }}
         IMAGE_TAG: ${{ github.sha }}
+      shell: sh
       run: >
         helm template ./infra-helm-chart/k8s-helm-chart/
         -f ./infra-helm-chart/k8s-helm-chart/dev/values.yaml
@@ -120,4 +125,5 @@ runs:
         --set serviceImage="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" > release.yaml
 
     - name: Apply release YAML script to Kubernetes
+      shell: sh
       run: kubectl apply -f release.yaml

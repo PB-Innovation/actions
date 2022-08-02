@@ -1,24 +1,7 @@
 name: semgrep
-author: "Rufet Mezemov"
-description: "semgrep"
-inputs:
-  ssh-key:
-    description: "ssh-key"
-    required: false
-    default: "secrets.SSH_PRIVATE_KEY"
-runs:
-  using: composite
-  steps:
-    - name: Checkout rules
-      uses: actions/checkout@v3
-      with:
-        ssh-key: ${{ inputs.ssh-key }}
-        repository: PBInnovation/infra-helm-chart
-        ref: master
-        path: chart
+author: 'Pərvin Yaqubzadə'
+description: "Semgrep scan on Docker container"
 
-    - name: Run semgrep command
-      shell: bash
-      run: semgrep ci
-      env:
-        SEMGREP_RULES: chart/semgrep/java.yml
+runs:
+  using: docker
+  image: Dockerfile
