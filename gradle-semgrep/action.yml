@@ -1,0 +1,7 @@
+name: semgrep
+author: 'Pərvin Yaqubzadə'
+description: "Semgrep scan on Docker container"
+
+runs:
+  using: docker
+  image: Dockerfile

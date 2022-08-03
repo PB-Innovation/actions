@@ -1,0 +1,59 @@
+name: java-validate-code
+author: 'Pərvin Yaqubzadə'
+description: 'GitHub action for building application, checking code quality, running unit and integration tests'
+
+inputs:
+  java-distribution:
+    description: 'Java distribution to use'
+    required: false
+    default: 'temurin'
+  java-version:
+    description: 'Java version to use'
+    required: false
+    default: '17'
+  gradle-version:
+    description: 'Gradle version'
+    required: false
+    default: 'wrapper'
+  gradle-debug-cache:
+    description: 'Debug output for gradle cache'
+    required: false
+    default: 'true'
+  has-integration-test:
+    description: 'Whatever project has integration tests or not'
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: ${{ inputs.java-distribution }}
+        java-version: ${{ inputs.java-version }}
+
+    - name: Setup Gradle and Build project
+      uses: gradle/gradle-build-action@v2.2.2
+      env:
+        GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: ${{ inputs.gradle-debug-cache }}
+      with:
+        gradle-version: wrapper
+        arguments: build -x check
+
+    - name: Run CheckStyle task
+      shell: sh
+      run: ./gradlew checkstyleMain
+
+    - name: Run Test task
+      shell: sh
+      run: ./gradlew test
+
+    - name: Run integration tests
+      shell: bash
+      run: |
+        if [[ ${{ inputs.has-integration-test }} == true ]]
+        then
+          cd contractTest
+          bash run.sh
+        fi
