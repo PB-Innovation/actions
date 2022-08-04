@@ -19,6 +19,9 @@ inputs:
     description: 'Debug output for gradle cache'
     required: false
     default: 'true'
+  env:
+    description: "Environment for service"
+    required: true
   env-context:
     description: 'Environment variables used in jobs'
     required: true
@@ -64,7 +67,7 @@ runs:
         version: 'v1.23.6'
       id: install
 
-    - name: Use dev kubectl context
+    - name: Use kubectl context
       env:
         KUBE_CONFIG_DATA: ${{ inputs.k8s-context }}
       shell: sh
@@ -116,12 +119,13 @@ runs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: ${{ github.event.repository.name }}
         IMAGE_TAG: ${{ github.sha }}
+        ENV: ${{ inputs.env }}
       shell: sh
       run: >
         helm template ./infra-helm-chart/k8s-helm-chart/
-        -f ./infra-helm-chart/k8s-helm-chart/dev/values.yaml
+        -f ./infra-helm-chart/k8s-helm-chart/$ENV/values.yaml
         -f ./infra/values-ms.yaml
-        --set clusterEnvironment="dev"
+        --set clusterEnvironment="$ENV"
         --set serviceImage="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" > release.yaml
 
     - name: Apply release YAML script to Kubernetes
