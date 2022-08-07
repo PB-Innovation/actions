@@ -125,7 +125,6 @@ runs:
         helm template ./infra-helm-chart/k8s-helm-chart/
         -f ./infra-helm-chart/k8s-helm-chart/$ENV/values.yaml
         -f ./infra/values-ms.yaml
-        --set clusterEnvironment="$ENV"
         --set serviceImage="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" > release.yaml
 
     - name: Apply release YAML script to Kubernetes
