@@ -19,8 +19,12 @@ inputs:
     description: 'Debug output for gradle cache'
     required: false
     default: 'true'
+  service-type:
+    description: 'Language of service'
+    required: true
+    default: 'java'
   env:
-    description: "Environment for service"
+    description: 'Environment for service'
     required: true
   env-context:
     description: 'Environment variables used in jobs'
@@ -42,12 +46,14 @@ runs:
   using: composite
   steps:
     - name: Set up Java
+      if: "${{ inputs.service-type == 'java' }}"
       uses: actions/setup-java@v3
       with:
         distribution: ${{ inputs.java-distribution }}
         java-version: ${{ inputs.java-version }}
 
     - name: Build the application
+      if: "${{ inputs.service-type == 'java' }}"
       uses: gradle/gradle-build-action@v2.2.2
       env:
         GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: ${{ inputs.gradle-debug-cache }}
