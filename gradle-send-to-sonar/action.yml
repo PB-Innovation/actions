@@ -1,6 +1,6 @@
 name: gradle-send-to-sonar
 author: 'Pərvin Yaqubzadə'
-description: 'GitHub action for sending test test coverage report to SonarCloud'
+description: 'GitHub action for sending test test coverage report to SonarCloud for JVM projects'
 
 inputs:
   java-distribution:
