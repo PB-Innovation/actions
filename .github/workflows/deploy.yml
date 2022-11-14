@@ -2,9 +2,11 @@ on:
   workflow_call:
     inputs:
       environment:
+        description: 'The environment which service going to be deployed'
         required: true
         type: string
       platform-url:
+        description: 'URL of service which is going to be shown in deployments tab in GitHub'
         required: false
         type: string
         default: 'https://google.com'
@@ -26,7 +28,7 @@ on:
       gradle-debug-cache:
         description: 'Debug output for gradle cache'
         required: false
-        default: 'true'
+        default: true
         type: string
     secrets:
       github-token:
@@ -82,7 +84,7 @@ jobs:
           echo $KUBE_CONFIG_DATA | base64 --decode > ~/.kube/config
 
       - name: Install AWS IAM
-        uses: woofenator/action-aws-iam-authenticator@master
+        uses: woofenator/action-aws-iam-authenticator@1.0.4
         id: install-aws-iam
 
       - name: Get Helm chart from Git repository
