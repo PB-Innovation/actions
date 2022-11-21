@@ -13,23 +13,28 @@ on:
       java-distribution:
         description: 'Java distribution to use'
         required: false
-        default: 'temurin'
         type: string
+        default: 'temurin'
       java-version:
         description: 'Java version to use'
         required: false
-        default: '17'
         type: string
+        default: '17'
       gradle-version:
         description: 'Gradle version'
         required: false
-        default: 'wrapper'
         type: string
+        default: 'wrapper'
       gradle-debug-cache:
         description: 'Debug output for gradle cache'
         required: false
-        default: true
         type: string
+        default: true
+      helm-chart-version:
+        description: 'Version tag of infra-helm-chart repo'
+        required: false
+        type: string
+        default: 'master'
     secrets:
       github-token:
         required: true
@@ -92,7 +97,7 @@ jobs:
         with:
           token: ${{ secrets.github-token }}
           repository: PB-Innovation/infra-helm-chart
-          ref: master
+          ref: ${{ inputs.helm-chart-version }}
           path: infra-helm-chart
 
       - name: Configure AWS credentials
