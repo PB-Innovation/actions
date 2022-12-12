@@ -1,0 +1,62 @@
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'The environment which service going to be deployed'
+        required: true
+        type: string
+      java-distribution:
+        description: 'Java distribution to use'
+        required: false
+        type: string
+        default: 'temurin'
+      java-version:
+        description: 'Java version to use'
+        required: false
+        type: string
+        default: '17'
+      gradle-version:
+        description: 'Gradle version'
+        required: false
+        type: string
+        default: 'wrapper'
+      gradle-argument:
+        description: 'Supplied argument for Gradle to run'
+        required: true
+        type: string
+    secrets:
+      db-url:
+        required: true
+      db-user:
+        required: true
+      db-pass:
+        required: true
+
+jobs:
+  migrate:
+    name: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: sh
+    environment: ${{ inputs.environment }}
+    env:
+      DB_CP_CHAYPAY_URL: ${{ secrets.db-url }}
+      DB_CP_CHAYPAY_USER: ${{ secrets.db-user }}
+      DB_CP_CHAYPAY_PASS: ${{ secrets.db-pass }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: ${{ inputs.java-distribution }}
+          java-version: ${{ inputs.java-version }}
+
+      - name: Update the Data Base Schema
+        uses: gradle/gradle-build-action@v2.2.2
+        with:
+          gradle-version: wrapper
+          arguments: ${{ inputs.gradle-argument }}
+          cache-disabled: true
